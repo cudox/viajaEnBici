@@ -2,7 +2,7 @@
 
 Aplicación de rutas ciclistas para Bogotá. Compara tres perfiles —**rápida**, **corta** y **segura**—, dibuja las ciclorrutas oficiales y puede calcular rutas **sin conexión** en el propio dispositivo, sin depender de que el mapa o una respuesta anterior sigan en caché.
 
-> Estado: MVP funcional de web + Android (APK debug). La publicación en GitHub está pendiente de autenticación; ver [Estado y pendientes](#estado-y-pendientes).
+> Estado: MVP funcional de web + Android (APK debug). Código publicado en [github.com/cudox/viajaEnBici](https://github.com/cudox/viajaEnBici).
 
 ![Rutas en línea sobre el mapa de Bogotá](docs/capturas/rutas-online.png)
 
@@ -161,15 +161,15 @@ Completado y verificado:
 - Motor offline real con rutas de ~9,7–10,3 km en 0,5 s tras la carga.
 - Service worker y recarga completa sin red.
 - Pruebas automatizadas y APK debug compilado.
+- Repositorio público publicado en `https://github.com/cudox/viajaEnBici` (commit inicial `d673d77`).
 
 Pendiente o condicionado:
 
-1. **Publicación en GitHub**: `gh` no está autenticado y el repositorio remoto aún no existe. El usuario debe ejecutar `gh auth login` (o aportar un token) para crear y subir `https://github.com/cudox/viajaEnBici`.
-2. **Prueba en dispositivo Android**: no hay `adb` con dispositivo conectado ni emulador; el APK no se ha abierto en un teléfono.
-3. **Servicios públicos**: Valhalla FOSSGIS, BRouter, Nominatim y las APIs de Bogotá son demostraciones. Para producción deben autohospedarse o revisarse sus políticas y límites.
-4. **Datos estáticos**: el grafo es una foto de OpenStreetMap. No hay actualización automática ni tráfico en vivo.
-5. **`/buscar2` de Mapas Bogotá**: el endpoint respondió `{"status":false}` con los parámetros probados. No se integra; la búsqueda usa Nominatim.
-6. **Firma de producción**: el APK generado es debug. Publicar en Play Store requiere keystore y un build release firmado.
+1. **Prueba en dispositivo Android**: no hay `adb` con dispositivo conectado ni emulador; el APK no se ha abierto en un teléfono.
+2. **Servicios públicos**: Valhalla FOSSGIS, BRouter, Nominatim y las APIs de Bogotá son demostraciones. Para producción deben autohospedarse o revisarse sus políticas y límites.
+3. **Datos estáticos**: el grafo es una foto de OpenStreetMap. No hay actualización automática ni tráfico en vivo.
+4. **`/buscar2` de Mapas Bogotá**: el endpoint respondió `{"status":false}` con los parámetros probados. No se integra; la búsqueda usa Nominatim.
+5. **Firma de producción**: el APK generado es debug. Publicar en Play Store requiere keystore y un build release firmado.
 
 ## Licencias
 
