@@ -1,0 +1,21 @@
+{
+  "fuente": "Instituto de Desarrollo Urbano (IDU) / Unidad Administrativa Especial de Catastro Distrital — Mapa de Referencia",
+  "servicio": "https://serviciosgis.catastrobogota.gov.co/arcgis/rest/services/Mapa_Referencia/Mapa_Referencia/MapServer/18",
+  "descargado": "2026-10-26T04:44:20.409Z",
+  "features": 6311,
+  "bbox": [
+    -74.211062,
+    4.480904,
+    -74.022909,
+    4.819964
+  ],
+  "superficies": {
+    "0": "Sin dato",
+    "1": "Concreto",
+    "2": "Asfalto",
+    "3": "Mixtos",
+    "4": "Adoquin concreto",
+    "5": "Adoquin arcilla"
+  },
+  "bytes": 3944569
+}

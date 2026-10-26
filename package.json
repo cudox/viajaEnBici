@@ -1,0 +1,38 @@
+{
+  "name": "viajaenbici",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Rutas ciclistas seguras para Bogotá, con mapas y enrutamiento sin conexión.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify:fuentes": "node scripts/verify-sources.mjs",
+    "data:ciclorrutas": "node scripts/fetch-ciclorrutas.mjs",
+    "data:osm": "node scripts/fetch-osm.mjs",
+    "data:offline": "node scripts/build-offline-graph.mjs",
+    "data:todo": "npm run data:ciclorrutas && npm run data:osm && npm run data:offline",
+    "cap:sync": "npm run build && cap sync",
+    "android:add": "cap add android",
+    "android:apk": "npm run cap:sync && cd android && ./gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/geolocation": "8.1.0",
+    "leaflet": "1.9.4"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.3",
+    "@types/leaflet": "1.9.22",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vitest": "5.0.5"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}

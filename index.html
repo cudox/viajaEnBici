@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="es" data-tema="claro">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f766e" />
+    <meta
+      name="description"
+      content="Viaja en Bici: compara rutas rápidas, cortas y seguras en bicicleta por Bogotá, con ciclorrutas oficiales y modo sin conexión."
+    />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <title>Viaja en Bici · Rutas ciclistas de Bogotá</title>
+  </head>
+  <body>
+    <div id="app" class="app">
+      <header class="barra-superior">
+        <a class="marca" href="./" aria-label="Viaja en Bici, inicio">
+          <img src="icons/icon.svg" alt="" width="36" height="36" />
+          <span class="marca-texto">
+            <strong>Viaja en Bici</strong>
+            <small>Bogotá</small>
+          </span>
+        </a>
+        <div class="barra-acciones">
+          <span id="chip-conexion" class="chip chip-online" title="Estado de la conexión">
+            <span class="punto" aria-hidden="true"></span>
+            <span id="texto-conexion">En línea</span>
+          </span>
+          <button id="btn-tema" class="boton-icono" type="button" aria-label="Cambiar tema">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v2m0 14v2M3 12h2m14 0h2M5.6 5.6l1.4 1.4m10 10 1.4 1.4m0-12.8-1.4 1.4m-10 10L5.6 18.4" />
+              <circle cx="12" cy="12" r="4" />
+            </svg>
+          </button>
+          <button id="btn-acerca" class="boton-icono" type="button" aria-label="Acerca de y fuentes">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 11v6m0-9.5v.2" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <main class="disposicion">
+        <aside class="panel" id="panel" aria-label="Planificador de rutas">
+          <div class="panel-encabezado">
+            <h1>¿A dónde pedaleamos?</h1>
+            <p>Compara ruta rápida, corta y segura por Bogotá.</p>
+          </div>
+
+          <div class="buscador">
+            <div class="campo-grupo" id="grupo-origen">
+              <span class="punto-ruta origen" aria-hidden="true">A</span>
+              <label for="entrada-origen">Origen</label>
+              <input
+                id="entrada-origen"
+                type="text"
+                placeholder="Calle, barrio o lugar"
+                autocomplete="off"
+                spellcheck="false"
+                aria-autocomplete="list"
+                aria-controls="sugerencias-origen"
+              />
+              <button
+                id="btn-origen-mapa"
+                class="boton-campo"
+                type="button"
+                aria-label="Elegir origen en el mapa"
+                title="Elegir origen en el mapa"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+              </button>
+              <button
+                id="btn-origen-ubicacion"
+                class="boton-campo"
+                type="button"
+                aria-label="Usar mi ubicación como origen"
+                title="Usar mi ubicación"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="12" cy="12" r="8" />
+                  <circle cx="12" cy="12" r="2.5" />
+                  <path d="M12 2v3m0 14v3M2 12h3m14 0h3" />
+                </svg>
+              </button>
+              <ul id="sugerencias-origen" class="sugerencias" role="listbox" hidden></ul>
+            </div>
+
+            <div class="campo-grupo" id="grupo-destino">
+              <span class="punto-ruta destino" aria-hidden="true">B</span>
+              <label for="entrada-destino">Destino</label>
+              <input
+                id="entrada-destino"
+                type="text"
+                placeholder="Calle, barrio o lugar"
+                autocomplete="off"
+                spellcheck="false"
+                aria-autocomplete="list"
+                aria-controls="sugerencias-destino"
+              />
+              <button
+                id="btn-destino-mapa"
+                class="boton-campo"
+                type="button"
+                aria-label="Elegir destino en el mapa"
+                title="Elegir destino en el mapa"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11Z" />
+                  <circle cx="12" cy="10" r="2.5" />
+                </svg>
+              </button>
+              <ul id="sugerencias-destino" class="sugerencias" role="listbox" hidden></ul>
+            </div>
+
+            <div class="fila-secundaria">
+              <button id="btn-intercambiar" class="boton-texto" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 4v13m0 0-3-3m3 3 3-3M17 20V7m0 0-3 3m3-3 3 3" />
+                </svg>
+                Intercambiar
+              </button>
+              <button id="btn-ejemplo" class="boton-texto" type="button">Probar un ejemplo</button>
+            </div>
+          </div>
+
+          <div class="fila-botones">
+            <button id="btn-comparar" class="boton-primario" type="button">
+              <span class="texto-boton">Comparar rutas</span>
+              <span class="girador" aria-hidden="true" hidden></span>
+            </button>
+            <button id="btn-limpiar" class="boton-secundario" type="button" aria-label="Limpiar ruta">
+              Limpiar
+            </button>
+          </div>
+
+          <div id="estado-app" class="estado" role="status" aria-live="polite">
+            <span id="estado-texto">Elige un origen y un destino para empezar.</span>
+          </div>
+
+          <section id="zona-resultados" hidden>
+            <div id="tarjetas" class="tarjetas" aria-label="Comparación de rutas"></div>
+            <div id="detalle-ruta" class="detalle-ruta"></div>
+            <div id="alternativas" class="alternativas"></div>
+            <details id="detalle-fuentes" class="fuentes">
+              <summary>Fuentes y estado de la consulta</summary>
+              <div id="lista-fuentes"></div>
+            </details>
+          </section>
+
+          <section class="offline-caja" aria-labelledby="titulo-offline">
+            <div class="offline-cabecera">
+              <strong id="titulo-offline">Modo sin conexión</strong>
+              <span id="offline-estado" class="chip-chip">Comprobando…</span>
+            </div>
+            <p>
+              Incluye mapa vectorial, ciclorrutas y enrutamiento local sobre OpenStreetMap. No depende del
+              tráfico en vivo.
+            </p>
+            <label class="campo-select" for="select-offline">
+              Comportamiento
+              <select id="select-offline">
+                <option value="auto">Automático (sin red)</option>
+                <option value="siempre">Siempre sin conexión</option>
+                <option value="nunca">Solo en línea</option>
+              </select>
+            </label>
+            <div class="fila-botones">
+              <button id="btn-preparar-offline" class="boton-secundario" type="button">
+                Preparar datos
+              </button>
+              <button id="btn-probar-offline" class="boton-secundario" type="button">
+                Probar motor local
+              </button>
+            </div>
+            <div id="progreso-offline" class="progreso" hidden>
+              <div class="barra"><span></span></div>
+              <small></small>
+            </div>
+            <div class="capas">
+              <label>
+                <input type="checkbox" id="chk-ciclorrutas" checked />
+                Ciclorrutas oficiales
+              </label>
+              <label>
+                <input type="checkbox" id="chk-vectorial" />
+                Mapa vectorial sin conexión
+              </label>
+            </div>
+          </section>
+        </aside>
+
+        <section class="zona-mapa" aria-label="Mapa de Bogotá">
+          <div id="mapa" class="mapa"></div>
+          <div class="leyenda" aria-hidden="true">
+            <span><i class="linea rapida"></i>Rápida</span>
+            <span><i class="linea corta"></i>Corta</span>
+            <span><i class="linea segura"></i>Segura</span>
+            <span><i class="linea ciclorruta"></i>Ciclorruta</span>
+          </div>
+          <div id="aviso-mapa" class="aviso-mapa" role="status" hidden></div>
+          <div id="modo-mapa" class="modo-mapa" hidden>
+            <span id="modo-mapa-texto"></span>
+            <button id="btn-cancelar-modo" type="button" class="boton-texto">Cancelar</button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog id="dialogo-acerca" class="dialogo">
+      <form method="dialog">
+        <div class="dialogo-cabecera">
+          <h2>Acerca de Viaja en Bici</h2>
+          <button class="boton-icono" value="cerrar" aria-label="Cerrar">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+        <p>
+          MVP de rutas ciclistas para Bogotá. Compara tres perfiles, muestra ciclorrutas oficiales y
+          permite calcular rutas en el dispositivo sin conexión.
+        </p>
+        <h3>Fuentes principales</h3>
+        <ul class="lista-fuentes-dialogo">
+          <li><strong>Valhalla</strong> (servidor público FOSSGIS) para ruteo y giro a giro.</li>
+          <li><strong>BRouter</strong> como motor alternativo de comparación.</li>
+          <li><strong>API de Ruteo de Mapas Bogotá</strong> (Catastro Distrital) para alternativas locales.</li>
+          <li><strong>IDU / Catastro Bogotá</strong> para la capa oficial de ciclorrutas.</li>
+          <li><strong>OpenStreetMap</strong> (© colaboradores, ODbL) para el grafo y mapa base offline.</li>
+          <li><strong>Nominatim</strong> para búsqueda de direcciones, con uso moderado.</li>
+        </ul>
+        <p class="nota">
+          Los servicios públicos son de demostración. Para producción conviene autohospedar los motores
+          y revisar las licencias y políticas de uso de cada fuente. Versión <span id="version-app"></span>.
+        </p>
+        <div class="dialogo-acciones">
+          <a class="boton-secundario" id="enlace-repositorio" href="#" target="_blank" rel="noopener">
+            Ver repositorio
+          </a>
+          <button class="boton-primario" value="cerrar">Cerrar</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Viaja en Bici">
+  <defs>
+    <linearGradient id="fondo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#115e59"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#fondo)"/>
+  <g fill="none" stroke="#f0fdfa" stroke-width="19" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="150" cy="334" r="68"/>
+    <circle cx="362" cy="334" r="68"/>
+    <path d="M150 334 214 204h88l60 130M214 204l66 130H150M302 204h54"/>
+    <path d="M258 164h58"/>
+    <path d="M236 386h112"/>
+  </g>
+</svg>

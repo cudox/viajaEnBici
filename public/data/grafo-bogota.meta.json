@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "generado": "2026-10-26T05:49:41.004Z",
+  "fuente": "© OpenStreetMap contributors (ODbL 1.0)",
+  "bbox": [
+    -74.25304,
+    4.4357,
+    -73.99447,
+    4.85762
+  ],
+  "nodos": 320191,
+  "aristas": 358236,
+  "componentes": 365,
+  "mayorComponente": 315365,
+  "bytesGrafo": 4842333,
+  "bytesMapaBase": 3728769,
+  "clases": [
+    {
+      "id": "ciclorruta",
+      "v": 18,
+      "s": 1
+    },
+    {
+      "id": "camino",
+      "v": 12,
+      "s": 1.8
+    },
+    {
+      "id": "peatonal",
+      "v": 9,
+      "s": 2.2
+    },
+    {
+      "id": "residencial",
+      "v": 16,
+      "s": 3
+    },
+    {
+      "id": "servicio",
+      "v": 12,
+      "s": 3.6
+    },
+    {
+      "id": "otra",
+      "v": 14,
+      "s": 4
+    },
+    {
+      "id": "terciaria",
+      "v": 16,
+      "s": 4.5
+    },
+    {
+      "id": "secundaria",
+      "v": 18,
+      "s": 6
+    },
+    {
+      "id": "primaria",
+      "v": 17,
+      "s": 8
+    },
+    {
+      "id": "troncal",
+      "v": 20,
+      "s": 9.5
+    }
+  ]
+}
