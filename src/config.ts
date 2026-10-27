@@ -61,7 +61,8 @@ export const CACHE = {
 export const COLORES = {
   rapida: '#f59e0b',
   corta: '#3b82f6',
-  segura: '#16a34a',
+  // Magenta: se distingue de las ciclorrutas y zonas verdes del mapa.
+  segura: '#c026d3',
   offline: '#8b5cf6',
 };
 
