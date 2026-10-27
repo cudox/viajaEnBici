@@ -17,6 +17,13 @@ Aplicación de rutas ciclistas para Bogotá. Compara tres perfiles —**rápida*
   - alternativas de BRouter y de la API de Ruteo de Mapas Bogotá.
 - **Instrucciones giro a giro** cuando el motor las entrega (Valhalla y Mapas Bogotá).
 - **Origen/destino** por texto, clic en el mapa, marcador arrastrable o geolocalización.
+- **Origen GPS por defecto**: si no fijas un origen, la app toma tu ubicación actual al comparar. El GPS se consulta solo por acción del usuario y, si falla, se puede elegir un origen manual.
+- **Mis rutas**:
+  - destinos recientes guardados automáticamente (sin guardar el origen);
+  - favoritas con origen y destino fijos;
+  - al abrir un destino reciente se recalcula desde la ubicación actual;
+  - al abrir una favorita se vuelve a comparar con los motores actuales;
+  - historial local, sin cuentas ni servidor, con opción de borrarlo.
 - **Modo sin conexión real**:
   - grafo ciclable propio de OpenStreetMap (320.191 nodos y 358.236 aristas);
   - mapa base vectorial local;
@@ -24,7 +31,7 @@ Aplicación de rutas ciclistas para Bogotá. Compara tres perfiles —**rápida*
   - Dijkstra en un Web Worker con métricas de distancia, tiempo y seguridad;
   - service worker para el armazón de la PWA y los datos.
 - **Android** con Capacitor, paquete `co.viajaenbici.app`, nombre «Viaja en Bici», iconos y splash propios.
-- Interfaz responsive en español, temas claro/oscuro, estado de conexión y persistencia de la última consulta.
+- Interfaz responsive en español, temas claro/oscuro, estado de conexión y persistencia local de preferencias, sesión y Mis rutas.
 
 | Rutas en línea | Sin conexión, mapa vectorial |
 | --- | --- |
@@ -47,13 +54,27 @@ npm run dev          # http://127.0.0.1:5173
 La app funciona sin variables de entorno ni claves API. Los datos de Bogotá ya están incluidos en `public/data/`.
 
 ```bash
-npm test             # pruebas de geometría, normalización y motor offline
+npm test             # pruebas de geometría, normalización, motor offline y almacenamiento
 npm run build        # comprueba tipos y genera dist/
 npm run preview      # sirve dist/ en http://127.0.0.1:4173
 npm run verify:fuentes
 ```
 
 `verify:fuentes` consulta los servicios reales (Valhalla, BRouter, Mapas Bogotá, Nominatim, ArcGIS, IDECA y Overpass) y devuelve código 1 si falla una fuente crítica. Los servicios públicos pueden tardar o limitar peticiones.
+
+## Origen GPS y Mis rutas
+
+El origen es **la ubicación actual por defecto**. No se pide GPS al abrir la app: se resuelve cuando pulsas «Comparar rutas», eliges un destino reciente o usas el botón de ubicación. Si el permiso se deniega, la app lo informa y permite fijar el origen manualmente.
+
+El historial guarda **solo destinos**, no el origen de cada consulta. Al tocar un destino reciente se calcula desde donde estés en ese momento. Las **favoritas** son distintas: conservan un origen y un destino fijos y se recalculan al abrirlas.
+
+```text
+Mis rutas
+├── Destinos recientes   ──► destino guardado + GPS actual
+└── Favoritas            ──► origen y destino guardados
+```
+
+Los datos quedan en `localStorage` del navegador o del WebView. No hay cuentas, sincronización ni envío del historial a un servidor. El guardado automático se puede desactivar y el historial se puede borrar desde el panel.
 
 ## Android
 
@@ -62,6 +83,8 @@ El proyecto nativo está en `android/` y el APK debug ya compilado en:
 ```text
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+> El APK actual corresponde a la versión anterior a **Mis rutas** y al cambio de color de la ruta segura. Hay que recompilarlo después de validar la versión web de esta rama.
 
 Para regenerarlo:
 
@@ -134,6 +157,7 @@ src/
     geocoding.ts         Nominatim y geolocalización
     map.ts               Leaflet, capas y marcadores
     offline-pack.ts      caché del paquete offline
+    rutas-guardadas.ts   destinos recientes y favoritas en almacenamiento local
     routing/
       valhalla.ts        normalización de Valhalla
       brouter.ts         normalización de BRouter
@@ -160,12 +184,13 @@ Completado y verificado:
 - Capa oficial de ciclorrutas y mapa base IDECA.
 - Motor offline real con rutas de ~9,7–10,3 km en 0,5 s tras la carga.
 - Service worker y recarga completa sin red.
+- Mis rutas con destinos recientes, favoritas y origen GPS por defecto; almacenamiento local sin backend.
 - Pruebas automatizadas y APK debug compilado.
 - Repositorio público publicado en `https://github.com/cudox/viajaEnBici` (commit inicial `d673d77`).
 
 Pendiente o condicionado:
 
-1. **Prueba en dispositivo Android**: no hay `adb` con dispositivo conectado ni emulador; el APK no se ha abierto en un teléfono.
+1. **Recompilar y probar el APK**: el binario actual es anterior a Mis rutas. La prioridad es validar la web y después ejecutar `npm run android:apk`. No hay `adb` con dispositivo conectado ni emulador, así que la prueba física sigue pendiente.
 2. **Servicios públicos**: Valhalla FOSSGIS, BRouter, Nominatim y las APIs de Bogotá son demostraciones. Para producción deben autohospedarse o revisarse sus políticas y límites.
 3. **Datos estáticos**: el grafo es una foto de OpenStreetMap. No hay actualización automática ni tráfico en vivo.
 4. **`/buscar2` de Mapas Bogotá**: el endpoint respondió `{"status":false}` con los parámetros probados. No se integra; la búsqueda usa Nominatim.

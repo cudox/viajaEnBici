@@ -1,6 +1,6 @@
 # Pruebas y resultados reales
 
-Fecha de la campaña: **26 de octubre de 2026**. Entorno: CachyOS, Node 26.11.1, npm 12.2.1, Chrome for Testing 156.0.8078.47 headless, JDK 21.0.12.1, Android SDK 36.
+Fecha de la campaña: **26 de octubre de 2026**. Entorno: CachyOS, Node 26.11.1, npm 12.2.1, Chrome for Testing 156.0.8078.47 y Firefox Developer Edition 159 headless, JDK 21.0.12.1, Android SDK 36.
 
 No se incluyen resultados inventados. Cuando una prueba dependió de un servicio público, se indica la variabilidad observada.
 
@@ -13,9 +13,9 @@ npm test
 Resultado:
 
 ```text
-Test Files  3 passed (3)
-Tests       15 passed (15)
-Duration    686 ms
+Test Files  5 passed (5)
+Tests       32 passed (32)
+Duration    775 ms
 ```
 
 Cobertura de las pruebas:
@@ -23,6 +23,8 @@ Cobertura de las pruebas:
 - `tests/geo.test.ts`: haversine, rumbos, giros, decodificación de una polilínea real de Valhalla y formato español (`10.1 km`, no `10 km`).
 - `tests/routing-normalize.test.ts`: normalización de respuestas de los motores.
 - `tests/offline-graph.test.ts`: carga el **grafo real** de 320.191 nodos, snapping a los puntos de prueba, rutas con los tres perfiles, instrucciones, límites geográficos y rechazo de puntos a más de 400 m de la red.
+- `tests/rutas-guardadas.test.ts`: deduplicación de destinos, límite de 30, actualización de favoritas, límites, datos corruptos y fallback en memoria.
+- `tests/storage.test.ts`: preferencias antiguas, modo de origen GPS/manual, sesión y limpieza de claves locales.
 
 La prueba offline no usa un fixture pequeño: descomprime `public/data/grafo-bogota.json.gz.bin` y calcula rutas reales. Por eso tarda más que una prueba unitaria normal.
 
@@ -151,6 +153,32 @@ MÓVIL (390 CSS px)
 
 También se revisaron capturas de escritorio y móvil en [capturas](capturas/). No se detectó overflow horizontal.
 
+### Mis rutas y origen GPS
+
+Verificación de interfaz con **Firefox Developer Edition 159 headless**, `vite preview` en `127.0.0.1:4173` y datos sembrados en `localStorage`:
+
+```text
+ESCRITORIO (1440×900)
+  origen por defecto: «Mi ubicación (GPS)» + etiqueta GPS
+  resumen inicial: «Sin rutas guardadas»
+  diálogo Mis rutas: 3 destinos y 1 favorita de prueba
+  pestaña Favoritas: nombre, 10.1 km · 31 min · Rápida
+  favorita guardada desde el detalle y visible en el panel
+  favorita abierta: diálogo cerrado y comparación offline recalculada
+
+MÓVIL (390×844)
+  panel visible con «Mis rutas» antes de comparar
+  diálogo dentro del ancho de la pantalla
+  sin desbordamiento horizontal
+
+RUTA SEGURA (offline)
+  tarjeta seleccionada en magenta
+  trazado magenta visible sobre el mapa
+  «Mis rutas» actualizado a 1 destino tras la comparación
+```
+
+No se probó el permiso de GPS real en Firefox ni en Android. Los flujos de GPS se validan por código y por las pruebas de sesión; la prueba física sigue pendiente.
+
 ## Android
 
 Compilación:
@@ -170,6 +198,8 @@ BUILD SUCCESSFUL
 APK: app/build/outputs/apk/debug/app-debug.apk
 Tamaño: 12 MB
 ```
+
+> Este APK se compiló antes de la rama de **Mis rutas** y del cambio de color de la ruta segura. Los datos de Android siguen siendo válidos, pero el binario debe regenerarse después de validar la web.
 
 Verificación con `aapt`:
 
@@ -206,7 +236,7 @@ El primer build falló por un recurso duplicado (`ic_launcher_background` defini
 - Lector de pantalla y navegación completa por teclado.
 - Firma release y publicación en Play Store.
 - Pruebas de carga con muchos usuarios.
-- Safari/Firefox; el service worker y `DecompressionStream` se probaron en Chrome/WebView moderno.
+- Safari; Firefox se usó para capturas de interfaz, no para service worker ni `DecompressionStream`.
 - Disponibilidad a largo plazo de los servicios públicos.
 - Actualización automática de datos.
 

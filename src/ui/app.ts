@@ -1,9 +1,12 @@
 import { APP } from '../config';
 import type {
   ConjuntoRutas,
+  DestinoReciente,
   Lugar,
+  ModoOrigen,
   PerfilRuta,
   RutaBici,
+  RutaFavorita,
 } from '../types';
 import { buscarLugares, describirPunto, obtenerUbicacion } from '../lib/geocoding';
 import { escaparHtml, formatearDistancia, formatearDuracion } from '../lib/format';
@@ -17,11 +20,15 @@ import {
 import { compararRutas } from '../lib/routing/compare';
 import { precargarOffline } from '../lib/routing/offline-client';
 import {
+  idFavorita,
+  resumirRutasGuardadas,
+  RutasGuardadas,
+} from '../lib/rutas-guardadas';
+import {
   cargarPreferencias,
   cargarSesion,
   guardarPreferencias,
   guardarSesion,
-  guardarUltimaRuta,
 } from '../lib/storage';
 
 const PERFILES: Array<{ id: PerfilRuta; nombre: string }> = [
@@ -45,16 +52,21 @@ function porId<T extends HTMLElement>(id: string): T {
 
 const prefs = cargarPreferencias();
 const sesion = cargarSesion();
+const rutasGuardadas = new RutasGuardadas();
 
-let origen: Lugar | undefined = sesion.origen;
+let origen: Lugar | undefined = sesion.origenModo === 'manual' ? sesion.origen : undefined;
 let destino: Lugar | undefined = sesion.destino;
+let origenModo: ModoOrigen = sesion.origenModo ?? (sesion.origen ? 'manual' : 'actual');
+let ubicacionActualEn = 0;
 let conjunto: ConjuntoRutas | null = null;
 let rutaActiva: RutaBici | null = null;
 let modoMapa: 'origen' | 'destino' | null = null;
 let cargando = false;
+let resolviendoUbicacion = false;
 let controlador: AbortController | null = null;
 let temporizadorAviso = 0;
 let temporizadorToast = 0;
+let tabRutasActiva: 'recientes' | 'favoritas' = 'recientes';
 const temporizadoresBusqueda: Record<'origen' | 'destino', number | undefined> = {
   origen: undefined,
   destino: undefined,
@@ -64,8 +76,19 @@ const abortadoresBusqueda: Record<'origen' | 'destino', AbortController | null> 
   destino: null,
 };
 
+function persistirSesion(): void {
+  guardarSesion({
+    origen: origenModo === 'manual' ? origen : undefined,
+    destino,
+    origenModo,
+    perfil: prefs.ultimoPerfil,
+  });
+}
+
 const entradaOrigen = porId<HTMLInputElement>('entrada-origen');
 const entradaDestino = porId<HTMLInputElement>('entrada-destino');
+const grupoOrigen = porId<HTMLElement>('grupo-origen');
+const etiquetaGps = porId<HTMLElement>('origen-modo');
 const sugerenciasOrigen = porId<HTMLUListElement>('sugerencias-origen');
 const sugerenciasDestino = porId<HTMLUListElement>('sugerencias-destino');
 const botonOrigenMapa = porId<HTMLButtonElement>('btn-origen-mapa');
@@ -94,6 +117,18 @@ const avisoMapa = porId<HTMLElement>('aviso-mapa');
 const modoMapaElemento = porId<HTMLElement>('modo-mapa');
 const modoMapaTexto = porId<HTMLElement>('modo-mapa-texto');
 const dialogoAcerca = porId<HTMLDialogElement>('dialogo-acerca');
+const dialogoRutas = porId<HTMLDialogElement>('dialogo-rutas');
+const resumenMisRutas = porId<HTMLElement>('resumen-mis-rutas');
+const listaDestinos = porId<HTMLUListElement>('lista-destinos');
+const listaFavoritas = porId<HTMLUListElement>('lista-favoritas');
+const contadorRecientes = porId<HTMLElement>('contador-recientes');
+const contadorFavoritas = porId<HTMLElement>('contador-favoritas');
+const tabRecientes = porId<HTMLButtonElement>('tab-recientes');
+const tabFavoritas = porId<HTMLButtonElement>('tab-favoritas');
+const panelRecientes = porId<HTMLElement>('panel-recientes');
+const panelFavoritas = porId<HTMLElement>('panel-favoritas');
+const chkGuardarRecientes = porId<HTMLInputElement>('chk-guardar-recientes');
+const btnBorrarDestinos = porId<HTMLButtonElement>('btn-borrar-destinos');
 const toastElemento = porId<HTMLElement>('toast');
 
 const mapa = new MapaViaje({
@@ -142,17 +177,37 @@ function lugarActual(tipo: 'origen' | 'destino'): Lugar | undefined {
   return tipo === 'origen' ? origen : destino;
 }
 
-function setLugar(tipo: 'origen' | 'destino', lugar: Lugar | undefined, actualizarMapa = true): void {
+function actualizarIndicadorOrigen(): void {
+  const esActual = origenModo === 'actual';
+  etiquetaGps.hidden = !esActual;
+  grupoOrigen.classList.toggle('origen-gps', esActual);
+  entradaOrigen.placeholder = esActual ? 'Mi ubicación (GPS)' : 'Calle, barrio o lugar';
+  entradaOrigen.title = esActual
+    ? 'El origen se obtendrá de tu ubicación actual al comparar'
+    : 'Origen elegido manualmente';
+}
+
+function setLugar(
+  tipo: 'origen' | 'destino',
+  lugar: Lugar | undefined,
+  actualizarMapa = true,
+  modo: ModoOrigen = 'manual',
+): void {
   const entrada = tipo === 'origen' ? entradaOrigen : entradaDestino;
-  if (tipo === 'origen') origen = lugar;
-  else destino = lugar;
+  if (tipo === 'origen') {
+    origen = lugar;
+    origenModo = lugar ? modo : 'actual';
+  } else {
+    destino = lugar;
+  }
 
   entrada.value = lugar?.etiqueta ?? '';
   if (actualizarMapa) {
     if (tipo === 'origen') mapa.setOrigen(lugar);
     else mapa.setDestino(lugar);
   }
-  guardarSesion({ origen, destino, perfil: prefs.ultimoPerfil });
+  actualizarIndicadorOrigen();
+  persistirSesion();
   ocultarSugerencias(tipo);
 }
 
@@ -164,10 +219,19 @@ function olvidarLugar(tipo: 'origen' | 'destino'): void {
     destino = undefined;
     mapa.setDestino(undefined);
   }
-  guardarSesion({ origen, destino, perfil: prefs.ultimoPerfil });
+  actualizarIndicadorOrigen();
+  persistirSesion();
+}
+
+function cancelarConsulta(): void {
+  const consulta = controlador;
+  controlador = null;
+  consulta?.abort();
+  if (cargando) setCargando(false);
 }
 
 function invalidarResultados(mensaje = 'Puntos actualizados. Compara de nuevo las rutas.'): void {
+  cancelarConsulta();
   if (!conjunto && !rutaActiva) return;
   conjunto = null;
   rutaActiva = null;
@@ -197,6 +261,11 @@ function configurarBuscador(tipo: 'origen' | 'destino'): void {
       // El texto escrito se conserva: solo se olvida el punto ya fijado.
       olvidarLugar(tipo);
       invalidarResultados();
+    }
+    if (tipo === 'origen') {
+      origenModo = entrada.value.trim() ? 'manual' : 'actual';
+      actualizarIndicadorOrigen();
+      persistirSesion();
     }
     if (entrada.value.trim().length < 3) {
       ocultarSugerencias(tipo);
@@ -399,7 +468,6 @@ function seleccionarRuta(ruta: RutaBici): void {
   renderTarjetas();
   renderDetalle(ruta);
   dibujarConjunto();
-  if (origen && destino) guardarUltimaRuta(ruta, origen, destino);
 }
 
 function dibujarConjunto(): void {
@@ -481,6 +549,7 @@ function renderDetalle(ruta: RutaBici): void {
     origen && destino
       ? `https://www.google.com/maps/dir/?api=1&origin=${origen.lat},${origen.lon}&destination=${destino.lat},${destino.lon}&travelmode=bicycling`
       : '#';
+  const esFavorita = Boolean(origen && destino && rutasGuardadas.esFavorita(origen, destino));
 
   detalleRuta.innerHTML = `<div class="detalle-cabecera">
       <div>
@@ -493,11 +562,21 @@ function renderDetalle(ruta: RutaBici): void {
     ${advertencias}
     <div class="detalle-pie">
       <a href="${enlaceMapas}" target="_blank" rel="noopener">Abrir en Google Maps</a>
+      <button
+        type="button"
+        class="boton-texto boton-favorita${esFavorita ? ' activa' : ''}"
+        id="btn-favorita"
+        aria-pressed="${esFavorita}"
+        title="${esFavorita ? 'Quitar de favoritas' : 'Guardar esta ruta en favoritas'}"
+      >${esFavorita ? '★ Favorita' : '☆ Guardar favorita'}</button>
       <button type="button" class="boton-texto" id="btn-centrar-ruta">Centrar en el mapa</button>
     </div>`;
 
   detalleRuta.querySelector<HTMLButtonElement>('#btn-centrar-ruta')?.addEventListener('click', () => {
     mapa.ajustarRuta(ruta.geometria);
+  });
+  detalleRuta.querySelector<HTMLButtonElement>('#btn-favorita')?.addEventListener('click', () => {
+    alternarFavorita();
   });
 }
 
@@ -549,15 +628,240 @@ function renderResultados(): void {
   renderFuentes();
 }
 
-async function comparar(forzarOffline?: boolean): Promise<void> {
-  if (cargando) return;
-  if (!origen || !destino) {
-    setEstado('Necesitas un origen y un destino para comparar.', 'error');
-    if (!origen) entradaOrigen.focus();
-    else entradaDestino.focus();
+function fechaRelativa(iso: string): string {
+  const fecha = Date.parse(iso);
+  if (!Number.isFinite(fecha)) return 'fecha desconocida';
+  const minutos = Math.max(0, Math.floor((Date.now() - fecha) / 60_000));
+  if (minutos < 1) return 'ahora';
+  if (minutos < 60) return `hace ${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  if (dias === 1) return 'ayer';
+  if (dias < 7) return `hace ${dias} días`;
+  return new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' }).format(
+    new Date(fecha),
+  );
+}
+
+function renderListaDestinos(destinos: DestinoReciente[]): void {
+  if (!destinos.length) {
+    listaDestinos.innerHTML =
+      '<li class="lista-vacia">Todavía no hay destinos guardados. Al comparar una ruta aparecerá aquí el destino, nunca el origen.</li>';
     return;
   }
-  if (origen.lat === destino.lat && origen.lon === destino.lon) {
+  listaDestinos.innerHTML = destinos
+    .map(
+      (entrada) => `<li class="ruta-guardada">
+        <button class="ruta-guardada-principal" type="button" data-id="${escaparHtml(
+          entrada.id,
+        )}" title="Calcular desde mi ubicación actual">
+          <strong>${escaparHtml(entrada.destino.etiqueta)}</strong>
+          <small>${entrada.veces} ${entrada.veces === 1 ? 'vez' : 'veces'} · ${escaparHtml(
+            fechaRelativa(entrada.ultimaVez),
+          )} · desde mi ubicación</small>
+        </button>
+        <button class="boton-eliminar-ruta" type="button" data-eliminar="${escaparHtml(
+          entrada.id,
+        )}" aria-label="Eliminar ${escaparHtml(entrada.destino.etiqueta)} del historial">×</button>
+      </li>`,
+    )
+    .join('');
+}
+
+function renderListaFavoritas(favoritas: RutaFavorita[]): void {
+  if (!favoritas.length) {
+    listaFavoritas.innerHTML =
+      '<li class="lista-vacia">Aún no tienes favoritas. Al ver una ruta, pulsa «Guardar favorita» para conservar su origen y su destino.</li>';
+    return;
+  }
+  listaFavoritas.innerHTML = favoritas
+    .map((favorita) => {
+      const datos = [
+        typeof favorita.distanciaM === 'number' ? formatearDistancia(favorita.distanciaM) : '',
+        typeof favorita.duracionS === 'number' ? formatearDuracion(favorita.duracionS) : '',
+      ].filter(Boolean);
+      const perfil = favorita.perfil
+        ? (PERFILES.find((item) => item.id === favorita.perfil)?.nombre ?? '')
+        : '';
+      const detalle = [...datos, perfil].filter(Boolean).join(' · ');
+      const ruta = `${favorita.origen.etiqueta} → ${favorita.destino.etiqueta}`;
+      const mostrarRuta = favorita.nombre.trim() !== ruta;
+      return `<li class="ruta-guardada">
+        <button class="ruta-guardada-principal" type="button" data-id="${escaparHtml(
+          favorita.id,
+        )}" title="Abrir y volver a comparar esta favorita">
+          <strong>${escaparHtml(favorita.nombre)}</strong>
+          ${mostrarRuta ? `<small>${escaparHtml(ruta)}</small>` : ''}
+          <small>${escaparHtml(detalle || fechaRelativa(favorita.actualizada))}</small>
+        </button>
+        <button class="boton-eliminar-ruta" type="button" data-eliminar="${escaparHtml(
+          favorita.id,
+        )}" aria-label="Quitar ${escaparHtml(favorita.nombre)} de favoritas">×</button>
+      </li>`;
+    })
+    .join('');
+}
+
+function renderMisRutas(): void {
+  const resumen = rutasGuardadas.resumen();
+  resumenMisRutas.textContent = resumirRutasGuardadas(resumen);
+  contadorRecientes.textContent = String(resumen.destinos);
+  contadorFavoritas.textContent = String(resumen.favoritas);
+  chkGuardarRecientes.checked = prefs.guardarRecientes;
+  btnBorrarDestinos.disabled = resumen.destinos === 0;
+  renderListaDestinos(rutasGuardadas.listarDestinos());
+  renderListaFavoritas(rutasGuardadas.listarFavoritas());
+}
+
+function activarTabRutas(tab: 'recientes' | 'favoritas'): void {
+  tabRutasActiva = tab;
+  const recientes = tab === 'recientes';
+  tabRecientes.classList.toggle('activa', recientes);
+  tabFavoritas.classList.toggle('activa', !recientes);
+  tabRecientes.setAttribute('aria-selected', String(recientes));
+  tabFavoritas.setAttribute('aria-selected', String(!recientes));
+  panelRecientes.hidden = !recientes;
+  panelFavoritas.hidden = recientes;
+}
+
+function abrirMisRutas(tab: 'recientes' | 'favoritas' = tabRutasActiva): void {
+  renderMisRutas();
+  activarTabRutas(tab);
+  if (!dialogoRutas.open) dialogoRutas.showModal();
+}
+
+function borrarDestino(id: string): void {
+  rutasGuardadas.eliminarDestino(id);
+  renderMisRutas();
+  toast('Destino eliminado del historial.', 'exito');
+}
+
+function borrarFavorita(id: string): void {
+  rutasGuardadas.eliminarFavorita(id);
+  renderMisRutas();
+  if (rutaActiva) renderDetalle(rutaActiva);
+  toast('Ruta eliminada de favoritas.', 'exito');
+}
+
+function borrarHistorial(): void {
+  if (!rutasGuardadas.listarDestinos().length) return;
+  if (!window.confirm('¿Borrar todos los destinos recientes? Las favoritas se conservan.')) return;
+  rutasGuardadas.limpiarDestinos();
+  renderMisRutas();
+  toast('Historial de destinos borrado.', 'exito');
+}
+
+function usarDestinoReciente(id: string): void {
+  const entrada = rutasGuardadas.listarDestinos().find((item) => item.id === id);
+  if (!entrada) return;
+  dialogoRutas.close();
+  ubicacionActualEn = 0;
+  origenModo = 'actual';
+  setLugar('origen', undefined, true, 'actual');
+  setLugar('destino', entrada.destino);
+  invalidarResultados('Destino elegido. El origen será tu ubicación actual.');
+  mapa.mapa.flyTo([entrada.destino.lat, entrada.destino.lon], 15, { duration: 0.6 });
+  setEstado('Destino elegido. Obteniendo tu ubicación actual…');
+  void comparar();
+}
+
+function abrirFavorita(id: string): void {
+  const favorita = rutasGuardadas.listarFavoritas().find((item) => item.id === id);
+  if (!favorita) return;
+  dialogoRutas.close();
+  ubicacionActualEn = 0;
+  setLugar('origen', favorita.origen, true, 'manual');
+  setLugar('destino', favorita.destino);
+  if (favorita.perfil) {
+    prefs.ultimoPerfil = favorita.perfil;
+    guardarPreferencias(prefs);
+  }
+  invalidarResultados('Favorita cargada. Comparando de nuevo…');
+  if (origen && destino) {
+    mapa.mapa.fitBounds(
+      [
+        [origen.lat, origen.lon],
+        [destino.lat, destino.lon],
+      ],
+      { padding: [60, 60], maxZoom: 15, duration: 0.6 },
+    );
+  }
+  void comparar();
+}
+
+function alternarFavorita(): void {
+  if (!origen || !destino || !rutaActiva) return;
+  const existente = rutasGuardadas
+    .listarFavoritas()
+    .find((favorita) => favorita.id === idFavorita(origen!, destino!));
+  if (existente) {
+    rutasGuardadas.eliminarFavorita(existente.id);
+    toast('Ruta eliminada de favoritas.', 'exito');
+  } else {
+    rutasGuardadas.guardarFavorita(origen, destino, {
+      perfil: rutaActiva.perfil ?? undefined,
+      distanciaM: rutaActiva.distanciaM,
+      duracionS: rutaActiva.duracionS,
+    });
+    toast('Ruta guardada en favoritas.', 'exito');
+  }
+  renderDetalle(rutaActiva);
+  renderMisRutas();
+}
+
+async function resolverUbicacionActual(forzar = false): Promise<Lugar | null> {
+  if (
+    !forzar &&
+    origen &&
+    origen.etiqueta === 'Mi ubicación' &&
+    Date.now() - ubicacionActualEn < 30_000
+  ) {
+    return origen;
+  }
+  if (resolviendoUbicacion) return null;
+
+  resolviendoUbicacion = true;
+  botonComparar.disabled = true;
+  setEstado('Obteniendo tu ubicación actual…');
+
+  try {
+    const lugar = await obtenerUbicacion();
+    ubicacionActualEn = Date.now();
+    setLugar('origen', lugar, true, 'actual');
+    return lugar;
+  } catch (error) {
+    const mensaje = mensajeError(error);
+    setEstado(`${mensaje} Elige un origen manualmente o vuelve a intentar con el botón de ubicación.`, 'error');
+    toast(mensaje, 'error');
+    entradaOrigen.focus();
+    return null;
+  } finally {
+    resolviendoUbicacion = false;
+    if (!cargando) botonComparar.disabled = false;
+  }
+}
+
+async function comparar(forzarOffline?: boolean): Promise<void> {
+  if (cargando || resolviendoUbicacion) return;
+  if (!destino) {
+    setEstado('Necesitas un destino para comparar.', 'error');
+    entradaDestino.focus();
+    return;
+  }
+  if (origenModo === 'actual') {
+    const actual = await resolverUbicacionActual();
+    if (!actual) return;
+  } else if (!origen) {
+    setEstado('Necesitas un origen y un destino para comparar.', 'error');
+    entradaOrigen.focus();
+    return;
+  }
+
+  const origenRuta = origen;
+  const destinoRuta = destino;
+  if (!origenRuta || !destinoRuta) return;
+  if (origenRuta.lat === destinoRuta.lat && origenRuta.lon === destinoRuta.lon) {
     setEstado('El origen y el destino son el mismo punto.', 'error');
     return;
   }
@@ -567,7 +871,8 @@ async function comparar(forzarOffline?: boolean): Promise<void> {
     (prefs.modoOffline === 'siempre' || (prefs.modoOffline === 'auto' && !navigator.onLine));
 
   controlador?.abort();
-  controlador = new AbortController();
+  const consulta = new AbortController();
+  controlador = consulta;
   setCargando(true);
   setEstado(
     usarOffline
@@ -578,18 +883,21 @@ async function comparar(forzarOffline?: boolean): Promise<void> {
 
   try {
     const resultado = await compararRutas({
-      origen,
-      destino,
+      origen: origenRuta,
+      destino: destinoRuta,
       usarOffline,
-      signal: controlador.signal,
+      signal: consulta.signal,
     });
     conjunto = resultado;
     rutaActiva = resultado[prefs.ultimoPerfil] ?? resultado.rapida;
     renderResultados();
     dibujarConjunto();
     mapa.ajustarRuta(rutaActiva.geometria);
-    guardarSesion({ origen, destino, perfil: prefs.ultimoPerfil });
-    if (origen && destino) guardarUltimaRuta(rutaActiva, origen, destino);
+    persistirSesion();
+    if (prefs.guardarRecientes) {
+      rutasGuardadas.registrarDestino(destinoRuta);
+      renderMisRutas();
+    }
     const segundos = ((performance.now() - inicio) / 1000).toFixed(1);
     setEstado(
       resultado.offline
@@ -604,21 +912,26 @@ async function comparar(forzarOffline?: boolean): Promise<void> {
       zonaResultados.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
   } catch (error) {
-    if (controlador.signal.aborted) {
-      setEstado('Consulta cancelada.');
+    if (consulta.signal.aborted) {
+      if (controlador === consulta) setEstado('Consulta cancelada.');
       return;
     }
     setEstado(`No se pudo calcular la ruta: ${mensajeError(error)}`, 'error');
     toast(mensajeError(error), 'error');
   } finally {
-    setCargando(false);
+    if (controlador === consulta) {
+      controlador = null;
+      setCargando(false);
+    }
   }
 }
 
 function limpiarTodo(): void {
-  controlador?.abort();
+  cancelarConsulta();
   origen = undefined;
   destino = undefined;
+  origenModo = 'actual';
+  ubicacionActualEn = 0;
   conjunto = null;
   rutaActiva = null;
   entradaOrigen.value = '';
@@ -628,9 +941,10 @@ function limpiarTodo(): void {
   mapa.limpiarRutas();
   zonaResultados.hidden = true;
   mapa.verBogota();
-  guardarSesion({ perfil: prefs.ultimoPerfil });
-  setEstado('Elige un origen y un destino para empezar.');
-  entradaOrigen.focus();
+  actualizarIndicadorOrigen();
+  persistirSesion();
+  setEstado('El origen se tomará de tu ubicación actual. Elige un destino.');
+  entradaDestino.focus();
 }
 
 function cargarEjemplo(): void {
@@ -644,6 +958,7 @@ function cargarEjemplo(): void {
     lat: 4.5981,
     lon: -74.076,
   });
+  invalidarResultados('Ejemplo cargado. Comparando de nuevo…');
   mapa.mapa.fitBounds(
     [
       [4.6767, -74.0483],
@@ -657,14 +972,16 @@ function cargarEjemplo(): void {
 
 async function usarUbicacion(): Promise<void> {
   botonOrigenUbicacion.disabled = true;
-  setEstado('Obteniendo tu ubicación…');
   try {
-    const lugar = await obtenerUbicacion();
-    elegirLugar('origen', lugar);
-    setEstado('Origen fijado en tu ubicación. Elige el destino.');
-  } catch (error) {
-    setEstado(mensajeError(error), 'error');
-    toast(mensajeError(error), 'error');
+    const lugar = await resolverUbicacionActual(true);
+    if (!lugar) return;
+    invalidarResultados('Origen actualizado. Comparando de nuevo…');
+    if (destino) {
+      await comparar();
+    } else {
+      setEstado('Origen fijado en tu ubicación actual. Elige el destino.');
+      entradaDestino.focus();
+    }
   } finally {
     botonOrigenUbicacion.disabled = false;
   }
@@ -752,7 +1069,7 @@ async function probarMotorLocal(): Promise<void> {
       'exito',
     );
     toast('Grafo offline cargado correctamente.', 'exito');
-    if (origen && destino) {
+    if (destino) {
       await comparar(true);
     }
   } catch (error) {
@@ -805,10 +1122,16 @@ function inicializar(): void {
   porId<HTMLElement>('version-app').textContent = APP.version;
   porId<HTMLAnchorElement>('enlace-repositorio').href = APP.repositorio;
 
-  if (origen) setLugar('origen', origen, false);
+  if (origenModo === 'manual' && origen) setLugar('origen', origen, false, 'manual');
+  else {
+    origen = undefined;
+    entradaOrigen.value = '';
+  }
   if (destino) setLugar('destino', destino, false);
+  actualizarIndicadorOrigen();
   if (origen) mapa.setOrigen(origen);
   if (destino) mapa.setDestino(destino);
+  renderMisRutas();
   if (origen && destino) {
     mapa.mapa.fitBounds(
       [
@@ -818,11 +1141,20 @@ function inicializar(): void {
       { padding: [60, 60], maxZoom: 14 },
     );
     setEstado('Ruta anterior restaurada. Pulsa «Comparar rutas» para actualizarla.');
+  } else if (destino) {
+    mapa.mapa.flyTo([destino.lat, destino.lon], 14, { duration: 0.5 });
+    setEstado('Destino restaurado. El origen se tomará de tu ubicación actual.');
+  } else if (origen) {
+    mapa.mapa.flyTo([origen.lat, origen.lon], 14, { duration: 0.5 });
+    setEstado('Origen restaurado. Elige un destino.');
+  } else {
+    setEstado('El origen se tomará de tu ubicación actual. Elige un destino.');
   }
 
   selectOffline.value = prefs.modoOffline;
   chkCiclorrutas.checked = prefs.mostrarCiclorrutas;
   chkVectorial.checked = prefs.mapaVectorial;
+  chkGuardarRecientes.checked = prefs.guardarRecientes;
   aplicarTema();
   actualizarChipConexion();
   void actualizarEstadoOffline();
@@ -847,10 +1179,50 @@ function inicializar(): void {
   botonComparar.addEventListener('click', () => void comparar());
   porId<HTMLButtonElement>('btn-limpiar').addEventListener('click', limpiarTodo);
   porId<HTMLButtonElement>('btn-ejemplo').addEventListener('click', cargarEjemplo);
+  porId<HTMLButtonElement>('btn-mis-rutas').addEventListener('click', () => abrirMisRutas());
+  tabRecientes.addEventListener('click', () => activarTabRutas('recientes'));
+  tabFavoritas.addEventListener('click', () => activarTabRutas('favoritas'));
+  dialogoRutas.addEventListener('click', (evento) => {
+    if (evento.target === dialogoRutas) dialogoRutas.close();
+  });
+
+  listaDestinos.addEventListener('click', (evento) => {
+    const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>('button');
+    if (!boton) return;
+    if (boton.dataset.eliminar) {
+      borrarDestino(boton.dataset.eliminar);
+    } else if (boton.dataset.id) {
+      usarDestinoReciente(boton.dataset.id);
+    }
+  });
+
+  listaFavoritas.addEventListener('click', (evento) => {
+    const boton = (evento.target as HTMLElement).closest<HTMLButtonElement>('button');
+    if (!boton) return;
+    if (boton.dataset.eliminar) {
+      borrarFavorita(boton.dataset.eliminar);
+    } else if (boton.dataset.id) {
+      abrirFavorita(boton.dataset.id);
+    }
+  });
+
+  chkGuardarRecientes.addEventListener('change', () => {
+    prefs.guardarRecientes = chkGuardarRecientes.checked;
+    guardarPreferencias(prefs);
+    toast(
+      prefs.guardarRecientes
+        ? 'Se guardarán los destinos de las próximas comparaciones.'
+        : 'No se guardarán nuevos destinos. Las favoritas se conservan.',
+      'exito',
+    );
+  });
+  btnBorrarDestinos.addEventListener('click', borrarHistorial);
+
   porId<HTMLButtonElement>('btn-intercambiar').addEventListener('click', () => {
     const anteriorOrigen = origen;
     const anteriorDestino = destino;
-    setLugar('origen', anteriorDestino);
+    if (!anteriorOrigen && !anteriorDestino) return;
+    setLugar('origen', anteriorDestino, true, anteriorDestino ? 'manual' : 'actual');
     setLugar('destino', anteriorOrigen);
     invalidarResultados('Origen y destino intercambiados. Compara de nuevo.');
     if (origen && destino) {

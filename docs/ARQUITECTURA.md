@@ -20,6 +20,7 @@ index.html + src/ui/app.ts
         ├── src/lib/map.ts            Leaflet: teselas IDECA, ciclorrutas, rutas, marcadores
         ├── src/lib/geocoding.ts      Nominatim + geolocalización del navegador
         ├── src/lib/offline-pack.ts   Cache Storage del paquete offline
+        ├── src/lib/rutas-guardadas.ts destinos recientes y favoritas (localStorage)
         └── src/lib/routing/
               ├── compare.ts          orquesta motores y elige perfiles
               ├── valhalla.ts         POST /route, tres juegos de costing
@@ -99,10 +100,32 @@ El cálculo corre en `offline.worker.ts` para no bloquear la interfaz:
 
 El detalle completo, incluido el formato y la verificación, está en [OFFLINE.md](OFFLINE.md).
 
+## Origen GPS y Mis rutas
+
+El estado del origen es explícito: `actual` o `manual`.
+
+- `actual` es el valor por defecto. El campo muestra «Mi ubicación (GPS)» y el GPS se resuelve al comparar, al elegir un destino reciente o al pulsar el botón de ubicación. No se pide permiso al abrir la app ni se guardan las coordenadas del origen en la sesión.
+- `manual` se activa al buscar una dirección, elegir un punto en el mapa o arrastrar el marcador A. Ese origen se conserva entre recargas.
+- Si el GPS falla o el permiso se deniega, la app informa y deja fijar el origen a mano.
+
+`src/lib/rutas-guardadas.ts` mantiene dos listas independientes en `localStorage`:
+
+| Lista | Contenido | Límite | Comportamiento |
+| --- | --- | ---: | --- |
+| Destinos recientes | destino, fecha, veces usado | 30 | deduplica por coordenadas; no guarda el origen |
+| Favoritas | nombre, origen, destino, perfil y métricas | 100 | se actualiza si repites el mismo par A/B |
+
+Los destinos recientes se registran solo después de una comparación exitosa. Al abrir uno se limpia el origen, se resuelve el GPS actual y se comparan las rutas. Las favoritas fijan A y B y se recalculan al abrirlas. `guardarRecientes` se puede desactivar en el panel; las favoritas no dependen de esa preferencia.
+
+No hay backend ni sincronización. El historial se puede borrar desde el panel y también se elimina con `borrarDatosLocales()` junto con las preferencias y la sesión.
+
 ## Flujo de una consulta
 
 ```text
 Usuario elige A y B
+        │
+        ├─ A = ubicación actual (por defecto)
+        │       └─ GPS bajo demanda ──► coordenadas A
         │
         ├─ modo auto/siempre offline ──► Worker: grafo local ──► 3 rutas
         │
@@ -116,17 +139,23 @@ Usuario elige A y B
              tarjetas + detalle + fuentes
                         │
               Leaflet dibuja hasta 8 trazados
+                        │
+          guarda destino en Mis rutas (si está activo)
 ```
 
-Si el usuario pulsa «Probar motor local», se precarga el grafo y, si hay origen y destino, se calcula inmediatamente la comparación offline.
+Si el usuario pulsa «Probar motor local», se precarga el grafo y, si ya hay destino, se calcula inmediatamente la comparación offline (con GPS si el origen está en modo actual).
 
 ## Persistencia
 
-- `localStorage`: última consulta, tema y comportamiento offline.
+- `localStorage`:
+  - `veb.prefs.v1`: tema, modo offline, capas y `guardarRecientes`;
+  - `veb.sesion.v1`: último origen manual, destino y modo de origen;
+  - `veb.destinos.v1`: hasta 30 destinos recientes;
+  - `veb.favoritas.v1`: hasta 100 rutas favoritas.
 - `Cache Storage` (`viajaenbici-v3`): ocho archivos de datos, documento, JS/CSS con hash e iconos.
 - Memoria: caché de rutas de 5 minutos.
 
-No hay cuentas, analítica ni cookies de terceros. Las coordenadas se envían a los servicios públicos solo cuando el usuario compara en línea o busca una dirección.
+No hay cuentas, analítica ni cookies de terceros. Los destinos recientes no guardan el origen. Las coordenadas se envían a los servicios públicos solo cuando el usuario compara en línea o busca una dirección.
 
 ## Service worker
 

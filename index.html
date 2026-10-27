@@ -53,7 +53,9 @@
           <div class="buscador">
             <div class="campo-grupo" id="grupo-origen">
               <span class="punto-ruta origen" aria-hidden="true">A</span>
-              <label for="entrada-origen">Origen</label>
+              <label for="entrada-origen"
+                >Origen <span id="origen-modo" class="etiqueta-gps">GPS</span></label
+              >
               <input
                 id="entrada-origen"
                 type="text"
@@ -127,6 +129,23 @@
               </button>
               <button id="btn-ejemplo" class="boton-texto" type="button">Probar un ejemplo</button>
             </div>
+
+            <button id="btn-mis-rutas" class="fila-mis-rutas" type="button" aria-haspopup="dialog">
+              <span class="mis-rutas-icono" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M12 8v5l3 2" />
+                  <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" />
+                  <path d="M3 4v4h4" />
+                </svg>
+              </span>
+              <span class="mis-rutas-texto">
+                <strong>Mis rutas</strong>
+                <small id="resumen-mis-rutas">Destinos recientes y favoritas</small>
+              </span>
+              <svg class="mis-rutas-flecha" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m9 6 6 6-6 6" />
+              </svg>
+            </button>
           </div>
 
           <div class="fila-botones">
@@ -243,6 +262,74 @@
           </a>
           <button class="boton-primario" value="cerrar">Cerrar</button>
         </div>
+      </form>
+    </dialog>
+
+    <dialog id="dialogo-rutas" class="dialogo dialogo-rutas" aria-labelledby="titulo-mis-rutas">
+      <form method="dialog">
+        <div class="dialogo-cabecera">
+          <div>
+            <h2 id="titulo-mis-rutas">Mis rutas</h2>
+            <p class="dialogo-subtitulo">Tus destinos recientes y las rutas que guardaste.</p>
+          </div>
+          <button class="boton-icono" value="cerrar" aria-label="Cerrar Mis rutas">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+          </button>
+        </div>
+
+        <div class="tabs-rutas" role="tablist" aria-label="Secciones de Mis rutas">
+          <button
+            id="tab-recientes"
+            class="tab-ruta activa"
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="panel-recientes"
+          >
+            Destinos recientes <span id="contador-recientes" class="contador">0</span>
+          </button>
+          <button
+            id="tab-favoritas"
+            class="tab-ruta"
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="panel-favoritas"
+          >
+            Favoritas <span id="contador-favoritas" class="contador">0</span>
+          </button>
+        </div>
+
+        <section id="panel-recientes" class="panel-rutas" role="tabpanel" aria-labelledby="tab-recientes">
+          <p class="nota">
+            Al elegir un destino se calcula desde tu ubicación actual. No guardamos el origen de estas
+            consultas, solo el destino.
+          </p>
+          <ul id="lista-destinos" class="lista-rutas-guardadas"></ul>
+          <div class="rutas-pie">
+            <label class="opcion-check">
+              <input id="chk-guardar-recientes" type="checkbox" checked />
+              Guardar destinos automáticamente
+            </label>
+            <button id="btn-borrar-destinos" class="boton-texto" type="button">
+              Borrar historial
+            </button>
+          </div>
+        </section>
+
+        <section
+          id="panel-favoritas"
+          class="panel-rutas"
+          role="tabpanel"
+          aria-labelledby="tab-favoritas"
+          hidden
+        >
+          <p class="nota">
+            Las favoritas conservan un origen y un destino fijos. Al abrirlas se vuelven a comparar con
+            los motores actuales.
+          </p>
+          <ul id="lista-favoritas" class="lista-rutas-guardadas"></ul>
+        </section>
       </form>
     </dialog>
 

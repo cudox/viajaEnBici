@@ -1,8 +1,9 @@
-import type { Lugar, PerfilRuta, Preferencias, RutaBici } from '../types';
+import type { Lugar, ModoOrigen, PerfilRuta, Preferencias } from '../types';
+import { CLAVE_DESTINOS, CLAVE_FAVORITAS } from './rutas-guardadas';
 
 const CLAVE_PREF = 'veb.prefs.v1';
 const CLAVE_SESION = 'veb.sesion.v1';
-const CLAVE_ULTIMA = 'veb.ultimaRuta.v1';
+const CLAVE_ULTIMA_LEGADO = 'veb.ultimaRuta.v1';
 
 export const PREFERENCIAS_INICIALES: Preferencias = {
   tema: 'claro',
@@ -10,6 +11,7 @@ export const PREFERENCIAS_INICIALES: Preferencias = {
   mostrarCiclorrutas: true,
   mapaVectorial: false,
   ultimoPerfil: 'rapida',
+  guardarRecientes: true,
 };
 
 function leerJson<T>(clave: string): T | null {
@@ -35,6 +37,7 @@ export function cargarPreferencias(): Preferencias {
   if (prefs.tema !== 'claro' && prefs.tema !== 'oscuro') prefs.tema = 'claro';
   if (!['auto', 'siempre', 'nunca'].includes(prefs.modoOffline)) prefs.modoOffline = 'auto';
   if (!['rapida', 'corta', 'segura'].includes(prefs.ultimoPerfil)) prefs.ultimoPerfil = 'rapida';
+  prefs.guardarRecientes = prefs.guardarRecientes !== false;
   return prefs;
 }
 
@@ -45,45 +48,32 @@ export function guardarPreferencias(prefs: Preferencias): void {
 export interface Sesion {
   origen?: Lugar;
   destino?: Lugar;
+  origenModo?: ModoOrigen;
   perfil?: PerfilRuta;
 }
 
 export function cargarSesion(): Sesion {
-  return leerJson<Sesion>(CLAVE_SESION) ?? {};
+  const sesion = leerJson<Sesion>(CLAVE_SESION) ?? {};
+  if (sesion.origenModo !== 'actual' && sesion.origenModo !== 'manual') {
+    sesion.origenModo = sesion.origen ? 'manual' : 'actual';
+  }
+  // Un modo manual sin coordenadas dejaría el origen vacío y sin GPS.
+  if (sesion.origenModo === 'manual' && !sesion.origen) sesion.origenModo = 'actual';
+  return sesion;
 }
 
 export function guardarSesion(sesion: Sesion): void {
   escribirJson(CLAVE_SESION, sesion);
 }
 
-export function guardarUltimaRuta(ruta: RutaBici, origen: Lugar, destino: Lugar): void {
-  escribirJson(CLAVE_ULTIMA, {
-    guardada: new Date().toISOString(),
-    origen,
-    destino,
-    ruta: {
-      id: ruta.id,
-      perfil: ruta.perfil,
-      proveedor: ruta.proveedor,
-      distanciaM: ruta.distanciaM,
-      duracionS: ruta.duracionS,
-      pasos: ruta.pasos,
-      geometria: ruta.geometria,
-    },
-  });
-}
-
-export function cargarUltimaRuta(): {
-  guardada: string;
-  origen: Lugar;
-  destino: Lugar;
-  ruta: Partial<RutaBici>;
-} | null {
-  return leerJson(CLAVE_ULTIMA);
-}
-
 export function borrarDatosLocales(): void {
-  for (const clave of [CLAVE_PREF, CLAVE_SESION, CLAVE_ULTIMA]) {
+  for (const clave of [
+    CLAVE_PREF,
+    CLAVE_SESION,
+    CLAVE_ULTIMA_LEGADO,
+    CLAVE_DESTINOS,
+    CLAVE_FAVORITAS,
+  ]) {
     try {
       localStorage.removeItem(clave);
     } catch {

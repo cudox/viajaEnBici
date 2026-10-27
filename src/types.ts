@@ -2,6 +2,8 @@ export type LatLng = [number, number];
 
 export type PerfilRuta = 'rapida' | 'corta' | 'segura';
 export type ProveedorRuta = 'valhalla' | 'brouter' | 'mapas' | 'offline';
+/** El origen puede ser la ubicación actual (se resuelve al comparar) o un punto elegido. */
+export type ModoOrigen = 'actual' | 'manual';
 
 export interface Lugar {
   etiqueta: string;
@@ -56,8 +58,31 @@ export interface Preferencias {
   mostrarCiclorrutas: boolean;
   mapaVectorial: boolean;
   ultimoPerfil: PerfilRuta;
+  /** Guarda automáticamente el destino de cada comparación exitosa. */
+  guardarRecientes: boolean;
   origen?: Lugar;
   destino?: Lugar;
+}
+
+/** Destino usado en una comparación. El origen no se guarda: se toma del GPS. */
+export interface DestinoReciente {
+  id: string;
+  destino: Lugar;
+  ultimaVez: string;
+  veces: number;
+}
+
+/** Ruta favorita con origen y destino fijos. */
+export interface RutaFavorita {
+  id: string;
+  nombre: string;
+  origen: Lugar;
+  destino: Lugar;
+  perfil?: PerfilRuta;
+  distanciaM?: number;
+  duracionS?: number;
+  creada: string;
+  actualizada: string;
 }
 
 export interface OpcionesRuta {

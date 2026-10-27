@@ -2,6 +2,8 @@
 
 La app web se empaqueta con Capacitor 8.5.3 en un proyecto Android nativo. El APK debug ya fue compilado y verificado; **no se ha ejecutado en un teléfono ni en un emulador** porque no había un dispositivo conectado.
 
+> Importante: el APK existente se generó antes de la rama de **Mis rutas** y del cambio de color de la ruta segura. Recompílalo con `npm run android:apk` después de validar la web.
+
 ## Estado verificado
 
 ```text
@@ -161,9 +163,15 @@ La última comprobación devolvió `19216646` bytes.
 
 El icono adaptativo usa `#0F766E` como fondo. Los iconos web están en `public/icons/`.
 
+## Mis rutas en Android
+
+- **Origen GPS por defecto**: si no se fija un origen, la app toma la ubicación actual al comparar. El campo muestra «Mi ubicación (GPS)» y la etiqueta GPS.
+- **Mis rutas**: destinos recientes (sin origen) y favoritas con A → B. Se guardan en `localStorage` del WebView y se pueden borrar desde el panel.
+- No hay sincronización con la versión web: cada instalación conserva su propio historial.
+
 ## Plugin de geolocalización
 
-Se usa `@capacitor/geolocation@8.1.0`. En Android, el diálogo de permisos se muestra la primera vez que el usuario pulsa el botón de ubicación. Si se deniega, la app informa y permite elegir el origen en el mapa.
+Se usa `@capacitor/geolocation@8.1.0`. El diálogo de permisos se muestra la primera vez que hace falta la ubicación: al comparar sin origen manual, al elegir un destino reciente o al pulsar el botón de ubicación. Si se deniega, la app informa y permite elegir el origen en el mapa.
 
 La ubicación no se pide al abrir la app; solo por acción del usuario.
 
