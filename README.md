@@ -84,7 +84,7 @@ El proyecto nativo está en `android/` y el APK debug ya compilado en:
 android/app/build/outputs/apk/debug/app-debug.apk
 ```
 
-> El APK actual corresponde a la versión anterior a **Mis rutas** y al cambio de color de la ruta segura. Hay que recompilarlo después de validar la versión web de esta rama.
+> El APK debug fue recompilado con **Mis rutas** y el nuevo color de la ruta segura. Sigue pendiente instalarlo en un teléfono físico.
 
 Para regenerarlo:
 
@@ -190,7 +190,7 @@ Completado y verificado:
 
 Pendiente o condicionado:
 
-1. **Recompilar y probar el APK**: el binario actual es anterior a Mis rutas. La prioridad es validar la web y después ejecutar `npm run android:apk`. No hay `adb` con dispositivo conectado ni emulador, así que la prueba física sigue pendiente.
+1. **Probar el APK en un dispositivo**: el binario ya se recompiló con Mis rutas y el color magenta. No hay `adb` con dispositivo conectado ni emulador, así que la instalación y la prueba física siguen pendientes.
 2. **Servicios públicos**: Valhalla FOSSGIS, BRouter, Nominatim y las APIs de Bogotá son demostraciones. Para producción deben autohospedarse o revisarse sus políticas y límites.
 3. **Datos estáticos**: el grafo es una foto de OpenStreetMap. No hay actualización automática ni tráfico en vivo.
 4. **`/buscar2` de Mapas Bogotá**: el endpoint respondió `{"status":false}` con los parámetros probados. No se integra; la búsqueda usa Nominatim.

@@ -199,7 +199,7 @@ APK: app/build/outputs/apk/debug/app-debug.apk
 Tamaño: 12 MB
 ```
 
-> Este APK se compiló antes de la rama de **Mis rutas** y del cambio de color de la ruta segura. Los datos de Android siguen siendo válidos, pero el binario debe regenerarse después de validar la web.
+> Este APK se recompiló después de validar la web con **Mis rutas** y el nuevo color de la ruta segura. La instalación en un teléfono físico sigue pendiente.
 
 Verificación con `aapt`:
 

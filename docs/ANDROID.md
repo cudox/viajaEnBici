@@ -2,7 +2,7 @@
 
 La app web se empaqueta con Capacitor 8.5.3 en un proyecto Android nativo. El APK debug ya fue compilado y verificado; **no se ha ejecutado en un teléfono ni en un emulador** porque no había un dispositivo conectado.
 
-> Importante: el APK existente se generó antes de la rama de **Mis rutas** y del cambio de color de la ruta segura. Recompílalo con `npm run android:apk` después de validar la web.
+> El APK debug ya incluye **Mis rutas** y el nuevo color de la ruta segura. La instalación en un teléfono físico sigue pendiente.
 
 ## Estado verificado
 
